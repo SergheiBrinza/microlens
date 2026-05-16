@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+title: "MicroLens: Microscopy Vision-Language Model"
+authors:
+  - family-names: Brinza
+    given-names: Serghei
+    affiliation: Independent Researcher, Vienna, Austria
+date-released: 2026-05-17
+version: "Final-1.0"
+license: Apache-2.0
+repository-code: "https://github.com/SergheiBrinza/microlens"
+url: "https://huggingface.co/Laborator/microlens-final"
+abstract: "Fine-tuned Gemma 4 E2B vision-language model for offline biological microscopy. Trained on 75,491 image-question-answer pairs spanning 95 genera of diatoms and fungal spores from three license-clean source datasets (UDE Diatoms CC0, DIATLAS CC-BY 4.0, TgFC CC-BY 4.0). Built for the Kaggle Gemma 4 Good Hackathon 2026."
+keywords:
+  - gemma-4
+  - microscopy
+  - vision-language-model
+  - unsloth
+  - on-device-ai
+  - diatoms
+  - fungal-spores

@@ -1,0 +1,45 @@
+# MicroLens Modelfile
+#
+# This Modelfile pins the prompt template, sampling parameters, and SYSTEM
+# disclaimer for local Ollama deployment of MicroLens.
+#
+# To build a local image, download the GGUF artefacts from the HuggingFace
+# repo into ./gguf/ and edit the FROM line below to point at the file you
+# want to serve:
+#
+#   - Base Gemma 4 E2B (placeholder, used by default below):
+#       FROM hf.co/unsloth/gemma-4-E2B-it-GGUF:Q4_K_M
+#
+#   - Fine-tuned MicroLens weights once published into ./gguf/:
+#       FROM ./gguf/microlens-final-Q4_K_M.gguf
+#
+# Local build / run:
+#   ollama create microlens -f Modelfile
+#   ollama run microlens
+#
+# Publish to Ollama Hub (after the Final training run completes):
+#   ollama create brinzaengineeringai/microlens-final -f Modelfile
+#   ollama push brinzaengineeringai/microlens-final
+#
+# The fine-tuned MicroLens Final weights for diatoms and fungal spores are
+# being trained on the license-clean dataset described in docs/DATA_CARD.md.
+# Until those weights are published, this Modelfile defaults to the base
+# Gemma 4 E2B for end-to-end runnability.
+
+FROM hf.co/unsloth/gemma-4-E2B-it-GGUF:Q4_K_M
+
+PARAMETER temperature 1.0
+PARAMETER top_p 0.95
+PARAMETER top_k 64
+PARAMETER min_p 0.0
+PARAMETER repeat_penalty 1.0
+PARAMETER num_ctx 8192
+
+TEMPLATE """{{ if .System }}<start_of_turn>system
+{{ .System }}<end_of_turn>
+{{ end }}{{ range .Messages }}<start_of_turn>{{ .Role }}
+{{ .Content }}<end_of_turn>
+{{ end }}<start_of_turn>model
+"""
+
+SYSTEM """You are MicroLens, a vision-language assistant fine-tuned on Gemma 4 E2B for biological microscopy. You analyse single microphotographs of diatoms and fungal spores and return Genus, Morphology, Habitat, and identification cues. You are not a medical device. Research and educational use only."""

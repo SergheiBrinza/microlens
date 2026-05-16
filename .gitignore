@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.Python
+*.egg-info/
+.venv/
+venv/
+.cache/
+.env
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.bak
+*~
+
+# Build artefacts
+build/
+dist/
+*.log
+wandb/
+
+# Large model weights — distributed via HuggingFace, never committed
+*.safetensors
+*.bin
+*.gguf
+*.pth
+*.pt
+gguf/*.gguf
+gguf/*/
+final_lora/
+merged_fp16/
+gguf_q4_k_m_gguf/
+checkpoint-*/
+
+# Training run output
+runs/
+outputs/
+microlens_hackathon_run/
+
+# Kaggle image companion (lives on Kaggle, not in the repo)
+kaggle/datasets/microlens-images-hackathon/images_384_clean/
+kaggle/datasets/*/images/
+
+# Large local-only datasets at repo root (e.g. for ad-hoc collection runs)
+/datasets/
+data/raw/
+data/processed/
+
+# Old APK / cache from prior MicroLens releases — superseded by upcoming v5 build
+android/*.apk
+training/scripts/unsloth_compiled_cache/

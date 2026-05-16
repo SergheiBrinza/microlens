@@ -1,0 +1,16 @@
+{
+  "title": "MicroLens Images 384 — Microscopy Specimens",
+  "id": "sergheibrinza/microlens-images-hackathon",
+  "subtitle": "75,491 PNGs at 384×384 · diatoms + fungal spores · MicroLens VQA companion",
+  "description": "The image companion to the **MicroLens VQA — Microscopy Q&A Dataset**. 75,491 microscopy specimen photographs, every one resize-and-padded to **384×384 RGB PNG**, ready to feed directly to a vision-language model without further preprocessing.\n\n## Naming convention\n\nEach filename encodes its provenance:\n\n```\n0051053_ude_diatoms_Planothidium.png\n   ↑       ↑           ↑\n   id      source      genus\n```\n\nMatch this filename to the `image` field in the **MicroLens VQA — Microscopy Q&A Dataset** to recover the question/answer pair and full metadata.\n\n## Source datasets — license-clean for commercial use\n\n- **ude_diatoms** — University of Duisburg-Essen Diatoms in the Wild 2024 (Zenodo 10410655), CC0\n- **diatlas** — open European diatom imaging (Zenodo 16260887), CC-BY 4.0\n- **tgfc** — Tectona grandis Fungal Community (figshare 28855910), CC-BY 4.0\n\nOnly upstream sources whose licences unambiguously permit commercial reuse (CC0 or CC-BY 4.0) are included in this release.\n\n## Preprocessing\n\n- **Original resolutions varied wildly** — some sources were 1024×1024 scans, others were 200×200 thumbnails. All were resize-and-padded to a uniform 384×384 with white background, preserving aspect ratio. No cropping.\n- **Background scrubbing**: stray UI text and watermark crops were removed manually for the top-30 genera; left as-is for the long-tail.\n- **De-duplication**: perceptual hash + manual review removed near-duplicates.\n\n## How to use\n\n```python\nfrom PIL import Image\nimg = Image.open('/kaggle/input/microlens-images-hackathon/images_384_clean/0051053_ude_diatoms_Planothidium.png').convert('RGB')\n# 384x384 RGB, ready for a vision-language model's image preprocessor\n```\n\n## License & citation\n\nFiles released under their original upstream licenses (CC-BY 4.0 or CC0). Aggregate selection and preprocessing pipeline by *Serghei Brinza — MicroLens, Vienna 2026*. The CC-BY 4.0 components require attribution.",
+  "licenses": [
+    {"name": "CC-BY-4.0"}
+  ],
+  "keywords": [
+    "biology",
+    "computer vision",
+    "image",
+    "microscopy",
+    "classification"
+  ]
+}

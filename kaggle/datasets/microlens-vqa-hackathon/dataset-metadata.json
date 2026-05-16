@@ -1,0 +1,16 @@
+{
+  "title": "MicroLens VQA — Microscopy Q&A Dataset",
+  "id": "sergheibrinza/microlens-vqa-hackathon",
+  "subtitle": "75,491 image-Q&A pairs · 95 genera · diatoms + fungal spores · CC-BY 4.0",
+  "description": "A **75,491-pair image-question-answer dataset** for explainable biological microscopy classification. Built specifically for the Gemma 4 Good Hackathon submission — designed so a vision-language model learns to identify organisms *and* describe their morphology, habitat, and identification cues, not just emit a class label.\n\n## What's in here\n\n| File | Pairs | Purpose |\n| --- | --- | --- |\n| `train.jsonl` | 67,121 | Fine-tuning |\n| `val.jsonl` | 8,370 | Per-step eval during training |\n\nBoth are JSON-Lines. Schema per line:\n\n```json\n{\"image\": \"0051053_ude_diatoms_Planothidium.png\", \"question\": \"...\", \"answer\": \"...\", \"metadata\": {\"category\": \"diatom\", \"genus\": \"Planothidium\", \"species\": \"Planothidium frequentissimum\", \"source\": \"ude_diatoms\"}}\n```\n\nThe `image` field is a **basename only** — match against the companion dataset **MicroLens Images 384 — Hackathon** to get the actual PNG.\n\n## Coverage\n\n- **95 unique genera**, identical genus set in both splits\n- **2 categories**: diatoms (62,933 pairs) and fungal spores (4,188 pairs)\n- Top-30 genera have hand-curated knowledge-base answers sourced from AlgaeBase, WoRMS, and ITIS — containing authoritative morphology, habitat, and identification-cue sections\n- Remaining genera have shorter, automatically-templated answers\n\n## Source datasets — license-clean for commercial use\n\n- **ude_diatoms** (39,389 pairs) — University of Duisburg-Essen Diatoms in the Wild 2024 (Zenodo 10410655), CC0\n- **diatlas** (23,544 pairs) — open European diatom imaging (Zenodo 16260887), CC-BY 4.0\n- **tgfc** (4,188 pairs) — Tectona grandis Fungal Community (figshare 28855910), CC-BY 4.0\n\nOnly upstream sources whose licences unambiguously permit commercial reuse (CC0 or CC-BY 4.0) are included in this release.\n\n## License & citation\n\nReleased under **CC-BY 4.0** (most-restrictive of the underlying licenses). Please credit *Serghei Brinza — MicroLens, Vienna 2026* and cite the underlying source collections (Zenodo 10410655, Zenodo 16260887, figshare 28855910, plus AlgaeBase, WoRMS, ITIS for KB enrichment).",
+  "licenses": [
+    {"name": "CC-BY-4.0"}
+  ],
+  "keywords": [
+    "biology",
+    "computer vision",
+    "multimodal",
+    "image",
+    "classification"
+  ]
+}

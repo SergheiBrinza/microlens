@@ -1,0 +1,16 @@
+{
+  "id": "sergheibrinza/microlens-gemma-4-vision-fine-tune-hackathon",
+  "title": "MicroLens — Gemma 4 Vision Fine-tune (Hackathon)",
+  "code_file": "microlens-hackathon.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": "false",
+  "enable_gpu": "true",
+  "enable_internet": "true",
+  "dataset_sources": [
+    "sergheibrinza/microlens-vqa-hackathon",
+    "sergheibrinza/microlens-images-hackathon"
+  ],
+  "competition_sources": [],
+  "kernel_sources": []
+}
