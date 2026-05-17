@@ -1859,12 +1859,12 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
                       font-size:10px; letter-spacing:3.5px; color:#7FE8E3;
                       text-transform:uppercase; margin-bottom:12px;">&#x1F4E5; Run anywhere</div>
           <div style="color:#fff; font-size:13px; line-height:1.7; font-weight:500;">
-            <a href="https://ollama.com/brinzaengineeringai" target="_blank" rel="noopener"
+            <a href="https://ollama.com/brinzaengineeringai/microlens-final" target="_blank" rel="noopener"
                style="color:#7FE8E3; text-decoration:none; font-weight:600;
                       font-size:12.5px; letter-spacing:0.3px;
                       border-bottom:1px solid rgba(127,232,227,.40);
                       display:inline-block; margin-bottom: 8px;">
-               &#x1F999; All 3 versions on Ollama Hub &nbsp;&#8599;</a>
+               &#x1F999; MicroLens on Ollama Hub &nbsp;&#8599;</a>
             <br>
             <a href="https://github.com/SergheiBrinza/microlens"
                target="_blank" rel="noopener"
