@@ -3,7 +3,7 @@
 Turning a smartphone into a pocket microscope with AI vision. Gemma 4 E2B fine-tuned for offline microscopy. Pair a $20 clip-on macro lens with a phone you already own, identify diatoms and fungal spores, no cloud, no subscription.
 
 > Submission to The Gemma 4 Good Hackathon, Kaggle, May 2026.
-> [Live demo](https://huggingface.co/spaces/Laborator/microlens) · [Model](https://huggingface.co/Laborator/microlens-final) · [Code](https://github.com/SergheiBrinza/microlens)
+> [Video](https://youtu.be/r1GIi4EukVg) · [Live demo](https://huggingface.co/spaces/Laborator/microlens) · [Model](https://huggingface.co/Laborator/microlens-final) · [Code](https://github.com/SergheiBrinza/microlens)
 
 ---
 
@@ -63,7 +63,7 @@ Built solo, end-to-end. One person, one consumer GPU.
 
 **Pipeline.** Three license-clean sources — UDE Diatoms in the Wild 2024 (Zenodo 10410655, CC0), DIATLAS (Zenodo 16260887, CC-BY 4.0), TgFC fungal spores (figshare 28855910, CC-BY 4.0) — yielding 75,491 image-question-answer triples across 2 categories and 95 genera (67,121 train + 8,370 val). Top-30 genera anchored against AlgaeBase, WoRMS, ITIS.
 
-**Training.** Unsloth FastVisionModel + 4-bit QLoRA on 1× RTX 3090 Ti (24 GB VRAM). LoRA r = 16, α = 32, dropout = 0; all four module groups enabled (vision + language + attention + MLP); 29.9 M trainable params (0.58 % of 4.44 B base). Two full epochs at lr 2 × 10⁻⁴ (cosine, 3 % warmup), effective batch 16, bf16, AdamW 8-bit. Wall-clock ~14 h, ~4 kWh, ~0.4 kg CO₂. Final train loss 0.052; eval loss monotonic 0.038 → 0.019 across both epochs (no overfitting). Script: [`scripts/train.py`](scripts/train.py); reproducible notebook: [microlens on Kaggle](https://www.kaggle.com/code/sergheibrinza/microlens).
+**Training.** Unsloth FastVisionModel + 4-bit QLoRA on 1× RTX 3090 Ti (24 GB VRAM). LoRA r = 16, α = 32, dropout = 0; all four module groups enabled (vision + language + attention + MLP); 29.9 M trainable params (0.58 % of 4.44 B base). Two full epochs at lr 2 × 10⁻⁴ (cosine, 3 % warmup), effective batch 16, bf16, AdamW 8-bit. Wall-clock ~14 h, ~4 kWh, ~0.4 kg CO₂. Final train loss 0.052; eval loss monotonic 0.038 → 0.019 across both epochs (no overfitting). Script: [`scripts/train.py`](scripts/train.py); reproducible notebook: [microlens-final on Kaggle](https://www.kaggle.com/code/sergheibrinza/microlens-final).
 
 ---
 
@@ -134,10 +134,11 @@ MicroLens is a research artefact, not a regulated medical / diagnostic / forensi
 
 **Links.**
 
+- Video demo: https://youtu.be/r1GIi4EukVg
 - Live demo: https://huggingface.co/spaces/Laborator/microlens
 - Model: https://huggingface.co/Laborator/microlens-final
 - Code: https://github.com/SergheiBrinza/microlens
-- Kaggle notebook: https://www.kaggle.com/code/sergheibrinza/microlens
+- Kaggle notebook: https://www.kaggle.com/code/sergheibrinza/microlens-final
 - Kaggle dataset (VQA): https://www.kaggle.com/datasets/sergheibrinza/microlens-vqa-hackathon
 - Kaggle dataset (Images): https://www.kaggle.com/datasets/sergheibrinza/microlens-images-hackathon
 - APK release: https://github.com/SergheiBrinza/microlens/releases/latest
