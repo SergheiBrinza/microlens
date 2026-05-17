@@ -95,7 +95,7 @@ def main():
     log(f"Val:    {VAL_FILE}")
     log("")
 
-    log("[1/5] Загружаю модель...")
+    log("[1/5] Loading model...")
     model, tokenizer = FastVisionModel.from_pretrained(
         MODEL_NAME, load_in_4bit=True,
         use_gradient_checkpointing="unsloth", max_seq_length=MAX_SEQ_LEN,
@@ -115,7 +115,7 @@ def main():
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     log(f"  ✅ Trainable: {trainable/1e6:.1f}M")
 
-    log("[3/5] Данные...")
+    log("[3/5] Data...")
     train_ds = LazyVisionDataset(TRAIN_FILE)
     val_ds = LazyVisionDataset(VAL_FILE)
     log(f"  ✅ Train: {len(train_ds)}, Val: {len(val_ds)}")
@@ -151,20 +151,20 @@ def main():
     start = time.time()
     try:
         result = trainer.train()
-        log(f"\n  ✅ Завершено за {(time.time()-start)/3600:.2f} часов")
+        log(f"\n  ✅ Finished in {(time.time()-start)/3600:.2f} hours")
         log(f"  Final train_loss: {result.training_loss:.4f}")
     except Exception as e:
         log(f"  ⚠ {type(e).__name__}: {e}")
         traceback.print_exc()
         return
 
-    log("Сохраняю LoRA...")
+    log("Saving LoRA...")
     final_dir = OUTPUT_DIR / "final_lora"
     model.save_pretrained(str(final_dir))
     tokenizer.save_pretrained(str(final_dir))
     log(f"  ✅ {final_dir}")
 
-    log("Сохраняю merged fp16...")
+    log("Saving merged fp16...")
     merged_dir = OUTPUT_DIR / "merged_fp16"
     try:
         model.save_pretrained_merged(str(merged_dir), tokenizer, save_method="merged_16bit")

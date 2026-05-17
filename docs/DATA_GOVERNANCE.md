@@ -96,7 +96,7 @@ This document supports five prize categories of the Kaggle Gemma 4 Good Hackatho
 
 ## Governance evolution
 
-This is the v1 framework. Material updates go through public review and are tracked in this file's git history. Affected cartridges receive release notes whenever the framework changes in a way that alters their tier or required reviews.
+This is the initial governance framework. Material updates go through public review and are tracked in this file's git history. Affected cartridges receive release notes whenever the framework changes in a way that alters their tier or required reviews.
 
 ---
 

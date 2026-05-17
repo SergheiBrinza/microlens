@@ -2,8 +2,9 @@
 
 Status: this Space code is preserved end-to-end from the previous MicroLens
 release so the user-facing layout, sample catalog, and 3-panel comparison flow
-stay functional. The internal "v2"/"v3" identifiers refer to the comparison
-slots in the UI (BASELINE / BRIEF / RICH); when the Final LoRA finishes
+stay functional. The user-facing flow runs two panels — UNTRAINED BASELINE (vanilla
+Gemma 4) and MICROLENS FINAL — both backed by separate llama-server
+backends or the bundled ZeroGPU adapter swap; when the Final LoRA finishes
 training, the corresponding URL_* environment variable should be repointed at
 the new endpoint and the panel subtitle updated, no other structural change
 required.
@@ -24,8 +25,7 @@ Layout:
 SAMPLES tab uses cached answers from catalog.json.
 UPLOAD / MICROSCOPE tabs run LIVE inference against per-slot backend URLs:
   URL_VANILLA  (default http://127.0.0.1:8085/v1/chat/completions)  # base Gemma 4
-  URL_V2       (default http://127.0.0.1:8084/v1/chat/completions)  # MicroLens brief
-  URL_V3       (default http://127.0.0.1:8083/v1/chat/completions)  # MicroLens rich
+  URL_FINAL       (default http://127.0.0.1:8083/v1/chat/completions)  # MicroLens rich
 On HF Space deployment configure these as Variables to point at a public tunnel
 (e.g. Cloudflare → llama-server). When unreachable the panel shows a clean
 "backend unavailable" message instead of crashing.
@@ -50,10 +50,8 @@ EXAMPLES_DIR = ROOT / "examples"
 CATALOG_PATH = ROOT / "catalog.json"
 
 CATEGORIES: List[Tuple[str, str]] = [
-    ("diatom",                 "DIATOMS"),
-    ("freshwater_zooplankton", "FRESHWATER"),
-    ("fungal_spore",           "FUNGAL SPORES"),
-    ("fish",                   "FISH"),
+    ("diatom",       "DIATOMS"),
+    ("fungal_spore", "FUNGAL SPORES"),
 ]
 CAT_LABELS = [lbl for _, lbl in CATEGORIES]
 CAT_BY_LABEL = {lbl: cid for cid, lbl in CATEGORIES}
@@ -97,8 +95,7 @@ CATALOG: List[Dict] = json.loads(CATALOG_PATH.read_text())
 BY_FILENAME = {s["filename"]: s for s in CATALOG}
 
 URL_VANILLA = os.environ.get("URL_VANILLA", "http://127.0.0.1:8085/v1/chat/completions")
-URL_V2      = os.environ.get("URL_V2",      "http://127.0.0.1:8084/v1/chat/completions")
-URL_V3      = os.environ.get("URL_V3",      "http://127.0.0.1:8083/v1/chat/completions")
+URL_FINAL      = os.environ.get("URL_FINAL",      "http://127.0.0.1:8083/v1/chat/completions")
 INFERENCE_PROMPT = "What is shown in this microscope image?"
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -144,20 +141,16 @@ if IS_HF_SPACE:
                 _unwrap_clippable(child)
     _unwrap_clippable(_zerogpu_model)
 
-    print("[ZeroGPU] attaching v2 LoRA…", flush=True)
+    print("[ZeroGPU] attaching MicroLens Final LoRA…", flush=True)
     _zerogpu_model = PeftModel.from_pretrained(
-        _zerogpu_model, _HF_LORA_REPO, subfolder="lora/v2", adapter_name="v2",
-    )
-    print("[ZeroGPU] attaching v3 LoRA…", flush=True)
-    _zerogpu_model.load_adapter(
-        _HF_LORA_REPO, subfolder="lora/v3", adapter_name="v3",
+        _zerogpu_model, _HF_LORA_REPO, subfolder=None, adapter_name="final",
     )
     _zerogpu_model.eval()
-    print("[ZeroGPU] ready (vanilla / v2 / v3 share one base, swap adapters)", flush=True)
+    print("[ZeroGPU] ready (vanilla / final share one base, swap adapter)", flush=True)
 
-    # ── Batch path: run vanilla + v2 + v3 in a SINGLE GPU acquisition.
-    # duration=60: vanilla can ramble for 20+s on long answers; v2+v3 add
-    # another 15s. 60s budget guarantees all 3 finish without "GPU task
+    # ── Batch path: run vanilla + final in a SINGLE GPU acquisition.
+    # duration=60: vanilla can ramble for 20+s on long answers; final adds
+    # another 15s. 60s budget guarantees both finish without "GPU task
     # aborted". Anon (2min/day) gets 2 clicks; free (3.5min) ~3; PRO (25min) ~25.
     @spaces.GPU(duration=60)
     def _zerogpu_infer_all(image_data_uri: str, prompt: str):
@@ -181,7 +174,7 @@ if IS_HF_SPACE:
                   for k, v in inputs.items()}
         prompt_len = inputs["input_ids"].shape[1]
         results = {}
-        for version in ("vanilla", "v2", "v3"):
+        for version in ("vanilla", "final"):
             t0 = _t.time()
             if version == "vanilla":
                 _zerogpu_model.disable_adapter_layers()
@@ -246,13 +239,13 @@ if IS_HF_SPACE:
               f"text_len={len(text)}, preview={text[:80]!r}", flush=True)
         return text.strip()
 
-_URL_TO_KIND = {URL_VANILLA: "vanilla", URL_V2: "v2", URL_V3: "v3"}
+_URL_TO_KIND = {URL_VANILLA: "vanilla", URL_FINAL: "final"}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # QR codes for the footer install card. Generated once at module load.
 # ─────────────────────────────────────────────────────────────────────────────
-APK_URL = "https://huggingface.co/Laborator/microlens-final/resolve/main/android/microlens-android-v1.0.0.apk"
+APK_URL = "https://github.com/SergheiBrinza/microlens/releases/download/v0.9.0-final/microlens-android-v0.9.0-final.apk"
 GITHUB_URL = "https://github.com/SergheiBrinza/microlens"
 
 def _qr_data_uri(data: str, dark: str = "#FFFFFF", light: str = "#000000",
@@ -1244,19 +1237,9 @@ PANEL_THEMES = {
         "glow_strong": "0 0 56px rgba(200,205,215,0.28)",
         "subtitle_color": "#9aa0a8",
     },
-    "v2": {
-        "title": "MICROLENS · BRIEF",
-        "subtitle": "Gemma 4 E2B · 75k microscopy VQA · 95 genera · production single-line answer",
-        "stripe": "linear-gradient(90deg, #00DCE6 0%, #007680 100%)",
-        "title_grad": "linear-gradient(90deg, #00DCE6 0%, #66EAF0 100%)",
-        "border": "rgba(0,220,230,0.45)",
-        "glow": "0 0 36px rgba(0,220,230,0.18)",
-        "glow_strong": "0 0 64px rgba(0,220,230,0.42)",
-        "subtitle_color": "#7FBEC4",
-    },
-    "v3": {
-        "title": "MICROLENS · RICH",
-        "subtitle": "v2 + KB-augmented epoch · genus + morphology + habitat + ID cues, end-to-end",
+    "final": {
+        "title": "MICROLENS FINAL",
+        "subtitle": "95 genera · diatoms + fungal spores · genus + morphology + habitat + ID cues",
         "stripe": "linear-gradient(90deg, #FF1744 0%, #800020 100%)",
         "title_grad": "linear-gradient(90deg, #FF5252 0%, #FF8888 100%)",
         "border": "rgba(255,23,68,0.45)",
@@ -1322,8 +1305,7 @@ def panel_html(kind: str, body: str, state: str = "ready", footer_text: Optional
 
 def empty_panels(reason: str = "empty") -> Tuple[str, str, str]:
     return (panel_html("vanilla", "", state=reason),
-            panel_html("v2", "", state=reason),
-            panel_html("v3", "", state=reason))
+            panel_html("final", "", state=reason))
 
 
 def analyse_curated(filename: str, shape: str, grid: int = 0, cross: int = 0):
@@ -1334,12 +1316,10 @@ def analyse_curated(filename: str, shape: str, grid: int = 0, cross: int = 0):
         return
     vp = viewport_html(full_uri(filename), shape, grid, cross)
     vanilla_full = s.get("vanilla_answer", "—")
-    v2_full      = s.get("v2_answer", "—")
-    v3_full      = s.get("v3_answer", "—")
+    final_full      = s.get("final_answer", "—")
     yield vp, panel_html("vanilla", "", state="typing"), \
-              panel_html("v2", "", state="typing"), \
-              panel_html("v3", "", state="typing")
-    max_len = max(len(vanilla_full), len(v2_full), len(v3_full))
+              panel_html("final", "", state="typing")
+    max_len = max(len(vanilla_full), len(final_full))
     step = 8
     delay = 0.040
     for i in range(step, max_len + step, step):
@@ -1347,16 +1327,13 @@ def analyse_curated(filename: str, shape: str, grid: int = 0, cross: int = 0):
             vp,
             panel_html("vanilla", vanilla_full[:min(i, len(vanilla_full))],
                        state="typing" if i < len(vanilla_full) else "ready"),
-            panel_html("v2", v2_full[:min(i, len(v2_full))],
-                       state="typing" if i < len(v2_full) else "ready"),
-            panel_html("v3", v3_full[:min(i, len(v3_full))],
-                       state="typing" if i < len(v3_full) else "ready"),
+            panel_html("final", final_full[:min(i, len(final_full))],
+                       state="typing" if i < len(final_full) else "ready"),
         )
         time.sleep(delay)
     yield (vp,
            panel_html("vanilla", vanilla_full),
-           panel_html("v2", v2_full),
-           panel_html("v3", v3_full))
+           panel_html("final", final_full))
 
 
 CSS = """
@@ -1713,7 +1690,7 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
                              elem_classes=["ml-hidden"], show_label=False)
     viewport_uri = gr.State(value="")
     # Most recent answers from the 3 panels (any mode) — translate reads from here
-    last_answers = gr.State(value={"vanilla": "", "v2": "", "v3": ""})
+    last_answers = gr.State(value={"vanilla": "", "final": ""})
 
     # Toolbar — full-width above both columns (no empty space in right column)
     mode_buttons = gr.HTML(value=mode_buttons_html(MODE_SAMPLES))
@@ -1780,8 +1757,7 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
 
     with gr.Row(equal_height=True, elem_classes=["equal-panels"]):
         vanilla_panel = gr.HTML(value=panel_html("vanilla", "", state="empty"))
-        v2_panel = gr.HTML(value=panel_html("v2", "", state="empty"))
-        v3_panel = gr.HTML(value=panel_html("v3", "", state="empty"))
+        final_panel = gr.HTML(value=panel_html("final", "", state="empty"))
 
     gr.HTML(f"""
     <div style="margin-top: 32px; padding: 22px 28px;
@@ -1817,7 +1793,7 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
           <div style="color:#e4e4e4; font-size:13px; line-height:1.85; font-weight:500;">
             Gemma 4 E2B-it <span style="color:#666;font-weight:400;">&middot;</span> Google DeepMind<br>
             Unsloth FastVisionModel <span style="color:#666;font-weight:400;">&middot;</span> 4-bit QLoRA<br>
-            PEFT multi-adapter <span style="color:#666;font-weight:400;">&middot;</span> vanilla / v2 / v3<br>
+            PEFT multi-adapter <span style="color:#666;font-weight:400;">&middot;</span> vanilla / final<br>
             llama.cpp + mtmd vision extension
           </div>
         </div>
@@ -1900,8 +1876,7 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
 
     LIVE_BACKENDS = [
         ("vanilla", URL_VANILLA, "Gemma 4 E2B · base"),
-        ("v2",      URL_V2,      "MicroLens · brief mode"),
-        ("v3",      URL_V3,      "MicroLens · rich mode"),
+        ("final",      URL_FINAL,      "MicroLens Final"),
     ]
 
     def render_tools(current_uri, shape, grid_str, cross_str, mode):
@@ -1946,7 +1921,7 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
         [mode_state, shape_state, grid_state, cross_state, picked_filename],
         [mode_buttons, samples_group, upload_group, micro_group,
          viewport, viewport_uri,
-         vanilla_panel, v2_panel, v3_panel, original_btn], api_name=False)
+         vanilla_panel, final_panel, original_btn], api_name=False)
 
     def on_cat_change(cat_label, current_filename, shape, grid_str, cross_str):
         try: grid = int(grid_str or "0")
@@ -1964,7 +1939,7 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
     cat_state.change(on_cat_change,
         [cat_state, picked_filename, shape_state, grid_state, cross_state],
         [folder_pills, folder_grid, viewport, picked_filename, viewport_uri,
-         vanilla_panel, v2_panel, v3_panel, original_btn, lang_dropdown],
+         vanilla_panel, final_panel, original_btn, lang_dropdown],
         api_name=False)
 
     def on_pick(filename, cat_label, shape, grid_str, cross_str):
@@ -1975,7 +1950,7 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
         # Reset live-answer state on every sample switch — without this the
         # previous image's live answer could leak into translate/restore for
         # the next sample and look like a real result.
-        cleared_state = {"vanilla": "", "v2": "", "v3": ""}
+        cleared_state = {"vanilla": "", "final": ""}
         if not filename:
             return (folder_html(cat_label, None),
                     viewport_html(None, shape, grid, cross), "", *empty_panels(),
@@ -1991,7 +1966,7 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
 
     picked_filename.change(on_pick,
         [picked_filename, cat_state, shape_state, grid_state, cross_state],
-        [folder_grid, viewport, viewport_uri, vanilla_panel, v2_panel, v3_panel,
+        [folder_grid, viewport, viewport_uri, vanilla_panel, final_panel,
          original_btn, lang_dropdown, last_answers], api_name=False)
 
     def on_file_upload(file_obj, shape, grid_str, cross_str):
@@ -2062,10 +2037,9 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
                   "or capture from your camera, then press AI ANALYZE.")
             yield (viewport_html(None, shape, grid, cross, live_video=live),
                    panel_html("vanilla", msg, state="ready"),
-                   panel_html("v2", msg, state="ready"),
-                   panel_html("v3", msg, state="ready"),
+                   panel_html("final", msg, state="ready"),
                    gr.Button(visible=False),
-                   {"vanilla": "", "v2": "", "v3": ""})
+                   {"vanilla": "", "final": ""})
             return
 
         source = ("webcam" if mode == MODE_MICRO else
@@ -2075,27 +2049,25 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
         running = f"⏳  Running on your {source}…"
         yield (vp,
                panel_html("vanilla", running, state="typing"),
-               panel_html("v2", running, state="typing"),
-               panel_html("v3", running, state="typing"),
+               panel_html("final", running, state="typing"),
                gr.Button(visible=False),
-               {"vanilla": "", "v2": "", "v3": ""})
+               {"vanilla": "", "final": ""})
 
         results = {}
-        answers = {"vanilla": "", "v2": "", "v3": ""}
+        answers = {"vanilla": "", "final": ""}
 
         # On HF Space: ONE GPU acquisition for all 3 versions (saves ~3× quota
         # vs the per-model loop). Locally we keep the 3 HTTP calls path.
         if IS_HF_SPACE:
             try:
                 all_answers = _zerogpu_infer_all(img_uri, INFERENCE_PROMPT)
-                for kind in ("vanilla", "v2", "v3"):
+                for kind in ("vanilla", "final"):
                     answers[kind] = all_answers.get(kind, "")
             except Exception as e:
                 err = f"{type(e).__name__}: {str(e)[:280]}"
                 yield (vp,
                        _error_panel("vanilla", "Gemma 4 E2B · base", err),
-                       _error_panel("v2",      "MicroLens · brief mode", err),
-                       _error_panel("v3",      "MicroLens · rich mode", err),
+                       _error_panel("final",      "MicroLens Final", err),
                        gr.Button(visible=False),
                        answers)
                 return
@@ -2121,16 +2093,13 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
                 return "".join(spans)
             footers = {
                 "vanilla": f"🛰 Live inference · <code>Gemma 4 E2B · base</code> · {source}",
-                "v2":      f"🛰 Live inference · <code>MicroLens · brief mode</code> · {source}",
-                "v3":      f"🛰 Live inference · <code>MicroLens · rich mode</code> · {source}",
+                "final":      f"🛰 Live inference · <code>MicroLens Final</code> · {source}",
             }
             yield (vp,
                    panel_html("vanilla", _animated_words(answers["vanilla"]),
                               state="ready", footer_text=footers["vanilla"]),
-                   panel_html("v2",      _animated_words(answers["v2"]),
-                              state="ready", footer_text=footers["v2"]),
-                   panel_html("v3",      _animated_words(answers["v3"]),
-                              state="ready", footer_text=footers["v3"]),
+                   panel_html("final",      _animated_words(answers["final"]),
+                              state="ready", footer_text=footers["final"]),
                    gr.Button(visible=False),
                    answers)
         else:
@@ -2141,8 +2110,7 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
                     results[kind] = _error_panel(kind, label, err)
                     yield (vp,
                            results.get("vanilla", panel_html("vanilla", running, state="typing")),
-                           results.get("v2", panel_html("v2", running, state="typing")),
-                           results.get("v3", panel_html("v3", running, state="typing")),
+                           results.get("final", panel_html("final", running, state="typing")),
                            gr.Button(visible=False),
                            answers)
                 else:
@@ -2159,8 +2127,7 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
                             footer_text=footer if is_done else None)
                         yield (vp,
                                results.get("vanilla", panel_html("vanilla", running, state="typing")),
-                               results.get("v2", panel_html("v2", running, state="typing")),
-                               results.get("v3", panel_html("v3", running, state="typing")),
+                               results.get("final", panel_html("final", running, state="typing")),
                                gr.Button(visible=False),
                                answers)
                         time.sleep(delay)
@@ -2189,7 +2156,7 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
     """
     analyze_btn.click(do_analyze,
         [picked_filename, shape_state, mode_state, grid_state, cross_state, viewport_uri],
-        [viewport, vanilla_panel, v2_panel, v3_panel, original_btn, last_answers],
+        [viewport, vanilla_panel, final_panel, original_btn, last_answers],
         js=ANALYZE_PRE_JS, api_name=False)
 
     def do_translate(filename, lang_label, answers):
@@ -2203,16 +2170,14 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
         if not sources:
             msg = "Run AI ANALYZE first to get an answer to translate."
             return (panel_html("vanilla", msg, state="ready"),
-                    panel_html("v2",      msg, state="ready"),
-                    panel_html("v3",      msg, state="ready"),
+                    panel_html("final",      msg, state="ready"),
                     gr.Button(visible=False))
 
         lang_code = LANG_BY_DISPLAY.get(lang_label, "en")
         lang_name = next((name for _, name, code in LANGUAGES if code == lang_code), "English")
         if lang_code == "en":
             return (panel_html("vanilla", sources.get("vanilla", "")),
-                    panel_html("v2",      sources.get("v2", "")),
-                    panel_html("v3",      sources.get("v3", "")),
+                    panel_html("final",      sources.get("final", "")),
                     gr.Button(visible=False))
         translated = {}
         engine = ""
@@ -2247,18 +2212,16 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
         if not translated or not any(translated.values()):
             placeholder = f"Translation to {lang_name} unavailable right now."
             return (panel_html("vanilla", placeholder, state="ready"),
-                    panel_html("v2", placeholder, state="ready"),
-                    panel_html("v3", placeholder, state="ready"),
+                    panel_html("final", placeholder, state="ready"),
                     gr.Button(visible=False))
         footer = f"🌍 {lang_name} · {engine}"
         return (panel_html("vanilla", translated.get("vanilla", ""), footer_text=footer),
-                panel_html("v2",      translated.get("v2", ""),      footer_text=footer),
-                panel_html("v3",      translated.get("v3", ""),      footer_text=footer),
+                panel_html("final",      translated.get("final", ""),      footer_text=footer),
                 gr.Button(visible=True))
 
     translate_btn.click(do_translate,
         [picked_filename, lang_dropdown, last_answers],
-        [vanilla_panel, v2_panel, v3_panel, original_btn], api_name=False)
+        [vanilla_panel, final_panel, original_btn], api_name=False)
 
     def restore_original(filename, answers):
         # Restore ONLY the live answer that produced this translation. Same
@@ -2271,14 +2234,13 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
                     gr.Button(visible=False),
                     gr.Dropdown(value=DEFAULT_LANG_DISPLAY))
         return (panel_html("vanilla", sources.get("vanilla", "")),
-                panel_html("v2",      sources.get("v2", "")),
-                panel_html("v3",      sources.get("v3", "")),
+                panel_html("final",      sources.get("final", "")),
                 gr.Button(visible=False),
                 gr.Dropdown(value=DEFAULT_LANG_DISPLAY))
 
     original_btn.click(restore_original,
         [picked_filename, last_answers],
-        [vanilla_panel, v2_panel, v3_panel, original_btn, lang_dropdown],
+        [vanilla_panel, final_panel, original_btn, lang_dropdown],
         api_name=False)
 
     demo.load(fn=None, inputs=None, outputs=None, js=CAMERA_JS)

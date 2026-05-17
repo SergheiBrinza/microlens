@@ -2,7 +2,7 @@
 
 Function-calling integrations for MicroLens (Gemma 4 E2B fine-tuned for microscopy).
 
-These tools are **stubs / proofs of concept** for the v3.1 roadmap milestone. They demonstrate that Gemma 4 can verify or enrich MicroLens identifications against external taxonomic databases at inference time.
+These tools are **stubs / proofs of concept** on the MicroLens roadmap. They demonstrate that Gemma 4 can verify or enrich MicroLens identifications against external taxonomic databases at inference time.
 
 ## Available tools
 
@@ -25,9 +25,9 @@ python tools/lookup_genus.py "Aulacoseira" --demo
 
 ## Roadmap
 
-v3.1:
+Planned:
 - Integration with Modelfile SYSTEM directive
-- Tool-call format demonstration in `training/scripts/kaggle_notebook.ipynb`
+- Tool-call format demonstration in the Kaggle reproducibility notebook
 - WoRMS API key support for higher rate limits
 - ITIS and GBIF fallbacks for terrestrial plants and fungi
 

@@ -8,8 +8,8 @@ can call external taxonomic databases at inference time to verify or
 enrich its identifications.
 
 This is a STUB / proof of concept. The full integration (Modelfile
-SYSTEM directive + Gemma 4 tool-calling format + retry logic) is
-documented as v3.1 on the roadmap. The current file provides:
+SYSTEM directive + Gemma 4 tool-calling format + retry logic) is on
+the MicroLens roadmap. The current file provides:
 
 1. A function schema in Gemma 4 / OpenAI-compatible format
 2. A working lookup_genus() that hits AlgaeBase (read-only, public)
