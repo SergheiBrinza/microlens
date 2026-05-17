@@ -41,9 +41,7 @@ The hackathon brief requires Gemma 4. No other open model could do this job in 2
 
 Per-Layer Embeddings makes the pocket-microscope concept work: 4.44 B parameters total, ~2 B effective via PLE — a budget Android holds the model in RAM.
 
-What I use: vision understanding (encoder + LM fine-tuned on 75 K pairs), multilingual output (35+ languages multimodal, 140+ pretrained), 128 K context, Apache 2.0. On-device inference satisfies HIPAA, GDPR, and equivalents by construction.
-
-Gemma 4 scales from a phone to a workstation — four sizes (E2B, E4B, 26B MoE, 31B), which makes the [MicroLens roadmap](ROADMAP.md) realistic.
+What I use: vision encoder + LM fine-tuned on 75 K pairs, 35+ languages multimodal, 128 K context, Apache 2.0. On-device inference satisfies HIPAA / GDPR by construction. Gemma 4 ships in four sizes (E2B, E4B, 26B MoE, 31B), which makes the [MicroLens roadmap](ROADMAP.md) realistic.
 
 ---
 
@@ -55,15 +53,7 @@ These two domains are the **hardest possible proof-of-concept** for AI microscop
 
 **Fungal spores are the leading cause of crop loss in the Global South.** *Colletotrichum, Neopestalotiopsis* and relatives strip billions from tropical agroforestry yearly. FAO estimates fungal pathogens destroy **10–23 % of the world's food supply**. Spores are 2–40 microns, three-dimensional, deceptively similar across genera.
 
-If the pipeline holds on these two, it holds on any simpler domain.
-
-Every new MicroLens module (Gemma 4 × dataset) must pass **three reviews before it can ship**:
-
-1. **Market.** Genuine global demand; not a duplicate of existing solutions.
-2. **Ethics & safety.** No harm to unqualified users; realistic misuse scenarios mapped; resistance to abuse.
-3. **Legal.** Source licences, jurisdictional compliance (US FDA, EU AI Act, UK MHRA, India CDSCO, China NMPA; medical / biometric restrictions; GDPR, HIPAA, PIPL).
-
-Diatoms + fungal spores are the **first modules to clear all three filters** — hence this flagship release. The three source datasets are independently published by mature scientific institutions under CC0 + CC-BY 4.0, giving deep taxonomic coverage (95 genera; top-30 hand-curated against AlgaeBase, WoRMS, ITIS) with zero commercial-use ambiguity.
+Every new module passes a **three-review filter** before shipping — **market** (genuine global demand), **ethics & safety** (no harm to unqualified users; misuse scenarios mapped), **legal** (source licences; FDA, EU AI Act, MHRA, CDSCO, NMPA, GDPR, HIPAA, PIPL). Diatoms + fungal spores are the first modules to clear all three — hence this flagship release. Sources released under CC0 + CC-BY 4.0; deep taxonomic coverage (95 genera; top-30 hand-curated against AlgaeBase, WoRMS, ITIS).
 
 ---
 
@@ -106,7 +96,17 @@ The same recipe scales to any domain where a trained eye reads small visual feat
 | Veterinary | livestock parasitology |
 | Forensics | fibre, particle, trace microscopy |
 
-One curated, license-clean dataset + ~14 h on a single 3090 Ti gives a new vertical on the same architecture. [ROADMAP.md](ROADMAP.md) lists **22 specialised editions** across all four Gemma 4 sizes — each a (dataset × Gemma 4 fine-tune) pair gated on the three-review filter before publication. Open stack: Apache 2.0 code, CC-BY 4.0 data, Apache 2.0 Gemma 4 base.
+One license-clean dataset + ~14 h on a 3090 Ti gives a new vertical. [ROADMAP.md](ROADMAP.md) lists **22 specialised editions** across all four Gemma 4 sizes. Open stack: Apache 2.0 code, CC-BY 4.0 data.
+
+---
+
+## Hackathon tracks addressed (4 of 5)
+
+- **Future of Education.** $20 teaching microscope for under-resourced classrooms; structured morphology / habitat / cue explanations in 35+ languages on a sub-$100 phone.
+- **Health and Sciences.** Diatoms are the WHO / EPA / EU reference indicator of freshwater quality; on-device inference satisfies HIPAA / GDPR by construction (research artefact, not a regulated diagnostic).
+- **Digital Equity.** $120 hardware floor, fully offline, Apache 2.0 + CC-BY 4.0 — no connectivity, subscription, or institutional licence required.
+- **Global Resilience.** Fungal pathogens destroy 10–23 % of world food supply; MicroLens identifies *Colletotrichum*, *Neopestalotiopsis* and relatives on smallholder farms outside cell range.
+- **Not Safety.** Outside scope as a vision/microscopy tool — claiming otherwise would be track-stuffing.
 
 ---
 
@@ -130,9 +130,7 @@ MicroLens is a research artefact, not a regulated medical / diagnostic / forensi
 
 ## What's next and links
 
-**Function calling + edge deployment.** `tools/lookup_genus.py` is a Gemma-4-native function-calling stub that verifies identifications against AlgaeBase at inference time. The Q4_K_M GGUF runs airplane-mode-capable on Android; Google AI Edge (LiteRT, MediaPipe LLM Inference) deployment is on the roadmap.
-
-**Roadmap.** [ROADMAP.md](ROADMAP.md) lists 22 specialised editions across medical-adjacent, earth sciences, agriculture, and industrial domains. Each — a (dataset × Gemma 4 fine-tune) pair — must clear the three-review filter before publication.
+**Function calling + edge deployment.** `tools/lookup_genus.py` — a Gemma-4-native function-calling stub that verifies identifications against AlgaeBase at inference time. Q4_K_M GGUF runs airplane-mode-capable on Android; Google AI Edge (LiteRT, MediaPipe LLM Inference) deployment is on the [roadmap](ROADMAP.md).
 
 **Links.**
 
