@@ -9,9 +9,13 @@
 [![Powered by Gemma 4](https://img.shields.io/badge/Powered%20by-Gemma%204-4285F4)](https://huggingface.co/unsloth/gemma-4-E2B-it)
 [![Kaggle Hackathon](https://img.shields.io/badge/Kaggle-Gemma%204%20Good%20Hackathon%202026-20BEFF)](https://www.kaggle.com)
 
-[![Watch the MicroLens demo on YouTube](https://img.youtube.com/vi/r1GIi4EukVg/hqdefault.jpg)](https://youtu.be/r1GIi4EukVg)
+### 🎬 [Watch the 90-second demo on YouTube](https://youtu.be/r1GIi4EukVg)
 
-*▶ 90-second walkthrough — base Gemma 4 vs MicroLens on real specimens.*
+[![▶ Watch the demo](https://img.shields.io/badge/%E2%96%B6%20WATCH%20THE%2090s%20DEMO-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/r1GIi4EukVg)
+
+<a href="https://youtu.be/r1GIi4EukVg"><img src="https://img.youtube.com/vi/r1GIi4EukVg/hqdefault.jpg" alt="MicroLens demo — click to play on YouTube" width="640"/></a>
+
+*Base Gemma 4 vs MicroLens on real diatom and fungal-spore specimens.*
 
 </div>
 
