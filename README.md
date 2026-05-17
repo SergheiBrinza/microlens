@@ -130,9 +130,11 @@ The repository ships a [Modelfile](Modelfile) that pins the prompt template and 
 - GitHub: https://github.com/SergheiBrinza/microlens
 - Model: https://huggingface.co/Laborator/microlens-final
 - HF Space: https://huggingface.co/spaces/Laborator/microlens
-- Kaggle VQA dataset: https://www.kaggle.com/datasets/sergheibrinza/microlens-vqa-hackathon
-- Kaggle images dataset: https://www.kaggle.com/datasets/sergheibrinza/microlens-images-hackathon
-- Kaggle notebook: https://www.kaggle.com/code/sergheibrinza/microlens
+- Kaggle dataset (VQA): https://www.kaggle.com/datasets/sergheibrinza/microlens-vqa-hackathon
+- Kaggle dataset (Images): https://www.kaggle.com/datasets/sergheibrinza/microlens-images-hackathon
+- Kaggle dataset (LoRA): https://www.kaggle.com/datasets/sergheibrinza/microlens-lora-final
+- Ollama (on-device, 3 GB GGUF): https://ollama.com/brinzaengineeringai/microlens-final
+- Kaggle notebook: https://www.kaggle.com/code/sergheibrinza/microlens-final
 - APK releases: https://github.com/SergheiBrinza/microlens/releases
 - Governance: [docs/DATA_GOVERNANCE.md](docs/DATA_GOVERNANCE.md)
 
