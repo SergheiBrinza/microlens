@@ -9,6 +9,10 @@
 [![Powered by Gemma 4](https://img.shields.io/badge/Powered%20by-Gemma%204-4285F4)](https://huggingface.co/unsloth/gemma-4-E2B-it)
 [![Kaggle Hackathon](https://img.shields.io/badge/Kaggle-Gemma%204%20Good%20Hackathon%202026-20BEFF)](https://www.kaggle.com)
 
+[![Watch the MicroLens demo on YouTube](https://img.youtube.com/vi/r1GIi4EukVg/hqdefault.jpg)](https://youtu.be/r1GIi4EukVg)
+
+*▶ 90-second walkthrough — base Gemma 4 vs MicroLens on real specimens.*
+
 </div>
 
 ---
@@ -124,12 +128,6 @@ The repository ships a [Modelfile](Modelfile) that pins the prompt template and 
 <br/>
 <code>ollama create microlens -f Modelfile && ollama run microlens</code>
 </p>
-
-## Watch the demo
-
-[![MicroLens demo on YouTube](https://img.youtube.com/vi/r1GIi4EukVg/hqdefault.jpg)](https://youtu.be/r1GIi4EukVg)
-
-90-second walkthrough of MicroLens identifying microscopy specimens on phone and browser.
 
 ## Links
 
