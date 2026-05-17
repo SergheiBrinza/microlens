@@ -125,6 +125,12 @@ The repository ships a [Modelfile](Modelfile) that pins the prompt template and 
 <code>ollama create microlens -f Modelfile && ollama run microlens</code>
 </p>
 
+## Watch the demo
+
+[![MicroLens demo on YouTube](https://img.youtube.com/vi/r1GIi4EukVg/maxresdefault.jpg)](https://youtu.be/r1GIi4EukVg)
+
+90-second walkthrough of MicroLens identifying microscopy specimens on phone and browser.
+
 ## Links
 
 - GitHub: https://github.com/SergheiBrinza/microlens
