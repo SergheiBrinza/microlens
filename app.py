@@ -1718,6 +1718,22 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
     </div>
     """)
 
+    gr.HTML("""
+    <div style="text-align:center; margin: -6px 0 26px;">
+        <a href="https://youtu.be/r1GIi4EukVg" target="_blank" rel="noopener"
+           style="display:inline-flex; align-items:center; gap:12px;
+                  padding:14px 28px; border-radius:999px;
+                  background: linear-gradient(135deg, #FF0000 0%, #CC0000 100%);
+                  color:#fff !important; text-decoration:none;
+                  font-family:'Space Grotesk',sans-serif; font-weight:800;
+                  letter-spacing:3px; text-transform:uppercase; font-size:13px;
+                  box-shadow: 0 8px 28px rgba(255,0,0,0.38), 0 0 0 1px rgba(255,255,255,0.06);">
+            <span style="font-size:18px; line-height:1;">&#9654;</span>
+            Watch the 90-second demo on YouTube
+        </a>
+    </div>
+    """)
+
     mode_state = gr.Textbox(value=MODE_SAMPLES, elem_id="hidden-mode",
                             elem_classes=["ml-hidden"], show_label=False)
     shape_state = gr.Textbox(value=SHAPE_SQUARE, elem_id="hidden-shape",
