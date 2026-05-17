@@ -1,13 +1,15 @@
 """MicroLens HuggingFace Space, Kaggle Gemma 4 Good Hackathon submission.
 
-Status: this Space code is preserved end-to-end from the previous MicroLens
-release so the user-facing layout, sample catalog, and 3-panel comparison flow
-stay functional. The user-facing flow runs two panels — UNTRAINED BASELINE (vanilla
-Gemma 4) and MICROLENS FINAL — both backed by separate llama-server
-backends or the bundled ZeroGPU adapter swap; when the Final LoRA finishes
-training, the corresponding URL_* environment variable should be repointed at
-the new endpoint and the panel subtitle updated, no other structural change
-required.
+Three-panel comparison flow:
+- UNTRAINED BASELINE: stock Gemma 4 E2B, no microscopy fine-tune.
+- MICROLENS FINAL · BRIEF: MicroLens Final + short prompt → one-line answer
+  for fast triage.
+- MICROLENS FINAL · RICH: MicroLens Final + full prompt → 4-section
+  structured answer (genus + morphology + habitat + identification cues).
+
+BRIEF and RICH hit the SAME MicroLens Final adapter (LoRA on Gemma 4 E2B).
+The only thing that changes between them is PROMPTS_BY_SLOT — brief asks
+for one sentence, rich asks for the full structured output.
 
 Layout:
 - Header: italic-serif logo + ONLINE green + Kaggle/Gemma 4 hackathon meta line
@@ -17,7 +19,7 @@ Layout:
   control panel (mode-dependent: category thumbs / upload zone / camera
   enumeration)
 - AI ANALYZE long oval cyan→red gradient button
-- 3 result panels: UNTRAINED BASELINE / MICROLENS BRIEF / MICROLENS RICH
+- 3 result panels: UNTRAINED BASELINE / MICROLENS FINAL · BRIEF / MICROLENS FINAL · RICH
 - Translate row with 28 languages (English default) + ORIGINAL button after
   translation
 - Footer with run-locally + APK + Legal links
@@ -25,7 +27,8 @@ Layout:
 SAMPLES tab uses cached answers from catalog.json.
 UPLOAD / MICROSCOPE tabs run LIVE inference against per-slot backend URLs:
   URL_VANILLA  (default http://127.0.0.1:8085/v1/chat/completions)  # base Gemma 4
-  URL_FINAL       (default http://127.0.0.1:8083/v1/chat/completions)  # MicroLens rich
+  URL_BRIEF    (default http://127.0.0.1:8083/v1/chat/completions)  # MicroLens Final (short prompt)
+  URL_RICH     (default http://127.0.0.1:8083/v1/chat/completions)  # MicroLens Final (rich prompt)
 On HF Space deployment configure these as Variables to point at a public tunnel
 (e.g. Cloudflare → llama-server). When unreachable the panel shows a clean
 "backend unavailable" message instead of crashing.
@@ -50,8 +53,10 @@ EXAMPLES_DIR = ROOT / "examples"
 CATALOG_PATH = ROOT / "catalog.json"
 
 CATEGORIES: List[Tuple[str, str]] = [
-    ("diatom",       "DIATOMS"),
-    ("fungal_spore", "FUNGAL SPORES"),
+    ("diatom",                 "DIATOMS"),
+    ("freshwater_zooplankton", "FRESHWATER"),
+    ("fungal_spore",           "FUNGAL SPORES"),
+    ("fish",                   "FISH"),
 ]
 CAT_LABELS = [lbl for _, lbl in CATEGORIES]
 CAT_BY_LABEL = {lbl: cid for cid, lbl in CATEGORIES}
@@ -95,8 +100,17 @@ CATALOG: List[Dict] = json.loads(CATALOG_PATH.read_text())
 BY_FILENAME = {s["filename"]: s for s in CATALOG}
 
 URL_VANILLA = os.environ.get("URL_VANILLA", "http://127.0.0.1:8085/v1/chat/completions")
-URL_FINAL      = os.environ.get("URL_FINAL",      "http://127.0.0.1:8083/v1/chat/completions")
+URL_BRIEF      = os.environ.get("URL_BRIEF",      "http://127.0.0.1:8083/v1/chat/completions")
+URL_RICH      = os.environ.get("URL_RICH",      "http://127.0.0.1:8083/v1/chat/completions")
 INFERENCE_PROMPT = "What is shown in this microscope image?"
+
+# Per-slot prompts. BRIEF and RICH hit the SAME MicroLens Final backend
+# (URL_BRIEF default = URL_RICH default), they only differ in the prompt.
+PROMPTS_BY_SLOT = {
+    "vanilla": INFERENCE_PROMPT,
+    "brief":   "Identify the genus of this microscopy specimen in one short sentence. No explanation, no extra detail.",
+    "rich":    "Identify this microscopy specimen. Reply in four sections: genus, morphology, habitat, identification cues.",
+}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ZeroGPU runtime: when running on HF Space we replace HTTP llama-server calls
@@ -146,12 +160,15 @@ if IS_HF_SPACE:
         _zerogpu_model, _HF_LORA_REPO, subfolder=None, adapter_name="final",
     )
     _zerogpu_model.eval()
-    print("[ZeroGPU] ready (vanilla / final share one base, swap adapter)", flush=True)
+    print("[ZeroGPU] ready (vanilla + MicroLens Final, prompt-differentiated brief/rich)", flush=True)
 
-    # ── Batch path: run vanilla + final in a SINGLE GPU acquisition.
-    # duration=60: vanilla can ramble for 20+s on long answers; final adds
-    # another 15s. 60s budget guarantees both finish without "GPU task
-    # aborted". Anon (2min/day) gets 2 clicks; free (3.5min) ~3; PRO (25min) ~25.
+    # ── Batch path: run vanilla + brief + rich in a SINGLE GPU acquisition.
+    # brief and rich use the SAME MicroLens Final adapter, differentiated only
+    # by the per-slot prompt (PROMPTS_BY_SLOT) — brief asks for a one-line
+    # answer, rich asks for the full 4-section structured output.
+    # duration=60: vanilla can ramble for 20+s on long answers; the two Final
+    # passes add another 15s. 60s budget guarantees all 3 finish without
+    # "GPU task aborted". Anon (2min/day) gets 2 clicks; free (3.5min) ~3; PRO (25min) ~25.
     @spaces.GPU(duration=60)
     def _zerogpu_infer_all(image_data_uri: str, prompt: str):
         import time as _t
@@ -161,29 +178,34 @@ if IS_HF_SPACE:
         img = Image.open(BytesIO(base64.b64decode(b64))).convert("RGB")
         if max(img.size) > 768:
             img.thumbnail((768, 768))
-        messages = [{"role": "user", "content": [
-            {"type": "image", "image": img},
-            {"type": "text", "text": prompt},
-        ]}]
-        inputs = _zerogpu_processor.apply_chat_template(
-            messages, add_generation_prompt=True, tokenize=True,
-            return_dict=True, return_tensors="pt",
-        )
-        inputs = {k: (v.to(_zerogpu_model.device, dtype=torch.bfloat16) if v.is_floating_point()
-                       else v.to(_zerogpu_model.device))
-                  for k, v in inputs.items()}
-        prompt_len = inputs["input_ids"].shape[1]
         results = {}
-        for version in ("vanilla", "final"):
+        for version in ("vanilla", "brief", "rich"):
             t0 = _t.time()
+            # Each slot gets its OWN prompt; brief and rich use the same
+            # MicroLens Final adapter but ask different things.
+            slot_prompt = PROMPTS_BY_SLOT.get(version, prompt)
+            messages = [{"role": "user", "content": [
+                {"type": "image", "image": img},
+                {"type": "text", "text": slot_prompt},
+            ]}]
+            inputs = _zerogpu_processor.apply_chat_template(
+                messages, add_generation_prompt=True, tokenize=True,
+                return_dict=True, return_tensors="pt",
+            )
+            inputs = {k: (v.to(_zerogpu_model.device, dtype=torch.bfloat16) if v.is_floating_point()
+                           else v.to(_zerogpu_model.device))
+                      for k, v in inputs.items()}
+            prompt_len = inputs["input_ids"].shape[1]
             if version == "vanilla":
                 _zerogpu_model.disable_adapter_layers()
-                # Vanilla rambles up to 1400+ chars on a microscope image which
-                # blows the 60s ZeroGPU budget; cap it tighter.
                 _max_tok = 256
-            else:
+            elif version == "brief":
                 _zerogpu_model.enable_adapter_layers()
-                _zerogpu_model.set_adapter(version)
+                _zerogpu_model.set_adapter("final")
+                _max_tok = 96   # short answer — cap tightly
+            else:  # "rich"
+                _zerogpu_model.enable_adapter_layers()
+                _zerogpu_model.set_adapter("final")
                 _max_tok = 512
             with torch.inference_mode():
                 out = _zerogpu_model.generate(
@@ -239,7 +261,7 @@ if IS_HF_SPACE:
               f"text_len={len(text)}, preview={text[:80]!r}", flush=True)
         return text.strip()
 
-_URL_TO_KIND = {URL_VANILLA: "vanilla", URL_FINAL: "final"}
+_URL_TO_KIND = {URL_VANILLA: "vanilla", URL_BRIEF: "brief", URL_RICH: "rich"}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1237,9 +1259,19 @@ PANEL_THEMES = {
         "glow_strong": "0 0 56px rgba(200,205,215,0.28)",
         "subtitle_color": "#9aa0a8",
     },
-    "final": {
-        "title": "MICROLENS FINAL",
-        "subtitle": "95 genera · diatoms + fungal spores · genus + morphology + habitat + ID cues",
+    "brief": {
+        "title": "MICROLENS FINAL · BRIEF",
+        "subtitle": "MicroLens Final · short single-line answer for quick triage",
+        "stripe": "linear-gradient(90deg, #00DCE6 0%, #007680 100%)",
+        "title_grad": "linear-gradient(90deg, #00DCE6 0%, #66EAF0 100%)",
+        "border": "rgba(0,220,230,0.45)",
+        "glow": "0 0 36px rgba(0,220,230,0.18)",
+        "glow_strong": "0 0 64px rgba(0,220,230,0.42)",
+        "subtitle_color": "#7FBEC4",
+    },
+    "rich": {
+        "title": "MICROLENS FINAL · RICH",
+        "subtitle": "MicroLens Final · genus + morphology + habitat + ID cues, end-to-end",
         "stripe": "linear-gradient(90deg, #FF1744 0%, #800020 100%)",
         "title_grad": "linear-gradient(90deg, #FF5252 0%, #FF8888 100%)",
         "border": "rgba(255,23,68,0.45)",
@@ -1305,7 +1337,8 @@ def panel_html(kind: str, body: str, state: str = "ready", footer_text: Optional
 
 def empty_panels(reason: str = "empty") -> Tuple[str, str, str]:
     return (panel_html("vanilla", "", state=reason),
-            panel_html("final", "", state=reason))
+            panel_html("brief", "", state=reason),
+            panel_html("rich", "", state=reason))
 
 
 def analyse_curated(filename: str, shape: str, grid: int = 0, cross: int = 0):
@@ -1316,10 +1349,12 @@ def analyse_curated(filename: str, shape: str, grid: int = 0, cross: int = 0):
         return
     vp = viewport_html(full_uri(filename), shape, grid, cross)
     vanilla_full = s.get("vanilla_answer", "—")
-    final_full      = s.get("final_answer", "—")
+    brief_full      = s.get("brief_answer", "—")
+    rich_full      = s.get("rich_answer", "—")
     yield vp, panel_html("vanilla", "", state="typing"), \
-              panel_html("final", "", state="typing")
-    max_len = max(len(vanilla_full), len(final_full))
+              panel_html("brief", "", state="typing"), \
+              panel_html("rich", "", state="typing")
+    max_len = max(len(vanilla_full), len(brief_full), len(rich_full))
     step = 8
     delay = 0.040
     for i in range(step, max_len + step, step):
@@ -1327,13 +1362,16 @@ def analyse_curated(filename: str, shape: str, grid: int = 0, cross: int = 0):
             vp,
             panel_html("vanilla", vanilla_full[:min(i, len(vanilla_full))],
                        state="typing" if i < len(vanilla_full) else "ready"),
-            panel_html("final", final_full[:min(i, len(final_full))],
-                       state="typing" if i < len(final_full) else "ready"),
+            panel_html("brief", brief_full[:min(i, len(brief_full))],
+                       state="typing" if i < len(brief_full) else "ready"),
+            panel_html("rich", rich_full[:min(i, len(rich_full))],
+                       state="typing" if i < len(rich_full) else "ready"),
         )
         time.sleep(delay)
     yield (vp,
            panel_html("vanilla", vanilla_full),
-           panel_html("final", final_full))
+           panel_html("brief", brief_full),
+           panel_html("rich", rich_full))
 
 
 CSS = """
@@ -1690,7 +1728,7 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
                              elem_classes=["ml-hidden"], show_label=False)
     viewport_uri = gr.State(value="")
     # Most recent answers from the 3 panels (any mode) — translate reads from here
-    last_answers = gr.State(value={"vanilla": "", "final": ""})
+    last_answers = gr.State(value={"vanilla": "", "brief": "", "rich": ""})
 
     # Toolbar — full-width above both columns (no empty space in right column)
     mode_buttons = gr.HTML(value=mode_buttons_html(MODE_SAMPLES))
@@ -1757,7 +1795,8 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
 
     with gr.Row(equal_height=True, elem_classes=["equal-panels"]):
         vanilla_panel = gr.HTML(value=panel_html("vanilla", "", state="empty"))
-        final_panel = gr.HTML(value=panel_html("final", "", state="empty"))
+        brief_panel = gr.HTML(value=panel_html("brief", "", state="empty"))
+        rich_panel = gr.HTML(value=panel_html("rich", "", state="empty"))
 
     gr.HTML(f"""
     <div style="margin-top: 32px; padding: 22px 28px;
@@ -1876,7 +1915,8 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
 
     LIVE_BACKENDS = [
         ("vanilla", URL_VANILLA, "Gemma 4 E2B · base"),
-        ("final",      URL_FINAL,      "MicroLens Final"),
+        ("brief",      URL_BRIEF,      "MicroLens · brief mode"),
+        ("rich",      URL_RICH,      "MicroLens · rich mode"),
     ]
 
     def render_tools(current_uri, shape, grid_str, cross_str, mode):
@@ -1921,7 +1961,7 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
         [mode_state, shape_state, grid_state, cross_state, picked_filename],
         [mode_buttons, samples_group, upload_group, micro_group,
          viewport, viewport_uri,
-         vanilla_panel, final_panel, original_btn], api_name=False)
+         vanilla_panel, brief_panel, rich_panel, original_btn], api_name=False)
 
     def on_cat_change(cat_label, current_filename, shape, grid_str, cross_str):
         try: grid = int(grid_str or "0")
@@ -1939,7 +1979,7 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
     cat_state.change(on_cat_change,
         [cat_state, picked_filename, shape_state, grid_state, cross_state],
         [folder_pills, folder_grid, viewport, picked_filename, viewport_uri,
-         vanilla_panel, final_panel, original_btn, lang_dropdown],
+         vanilla_panel, brief_panel, rich_panel, original_btn, lang_dropdown],
         api_name=False)
 
     def on_pick(filename, cat_label, shape, grid_str, cross_str):
@@ -1950,7 +1990,7 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
         # Reset live-answer state on every sample switch — without this the
         # previous image's live answer could leak into translate/restore for
         # the next sample and look like a real result.
-        cleared_state = {"vanilla": "", "final": ""}
+        cleared_state = {"vanilla": "", "brief": "", "rich": ""}
         if not filename:
             return (folder_html(cat_label, None),
                     viewport_html(None, shape, grid, cross), "", *empty_panels(),
@@ -1966,7 +2006,7 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
 
     picked_filename.change(on_pick,
         [picked_filename, cat_state, shape_state, grid_state, cross_state],
-        [folder_grid, viewport, viewport_uri, vanilla_panel, final_panel,
+        [folder_grid, viewport, viewport_uri, vanilla_panel, brief_panel, rich_panel,
          original_btn, lang_dropdown, last_answers], api_name=False)
 
     def on_file_upload(file_obj, shape, grid_str, cross_str):
@@ -2037,9 +2077,10 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
                   "or capture from your camera, then press AI ANALYZE.")
             yield (viewport_html(None, shape, grid, cross, live_video=live),
                    panel_html("vanilla", msg, state="ready"),
-                   panel_html("final", msg, state="ready"),
+                   panel_html("brief", msg, state="ready"),
+                   panel_html("rich", msg, state="ready"),
                    gr.Button(visible=False),
-                   {"vanilla": "", "final": ""})
+                   {"vanilla": "", "brief": "", "rich": ""})
             return
 
         source = ("webcam" if mode == MODE_MICRO else
@@ -2049,25 +2090,27 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
         running = f"⏳  Running on your {source}…"
         yield (vp,
                panel_html("vanilla", running, state="typing"),
-               panel_html("final", running, state="typing"),
+               panel_html("brief", running, state="typing"),
+               panel_html("rich", running, state="typing"),
                gr.Button(visible=False),
-               {"vanilla": "", "final": ""})
+               {"vanilla": "", "brief": "", "rich": ""})
 
         results = {}
-        answers = {"vanilla": "", "final": ""}
+        answers = {"vanilla": "", "brief": "", "rich": ""}
 
         # On HF Space: ONE GPU acquisition for all 3 versions (saves ~3× quota
         # vs the per-model loop). Locally we keep the 3 HTTP calls path.
         if IS_HF_SPACE:
             try:
                 all_answers = _zerogpu_infer_all(img_uri, INFERENCE_PROMPT)
-                for kind in ("vanilla", "final"):
+                for kind in ("vanilla", "brief", "rich"):
                     answers[kind] = all_answers.get(kind, "")
             except Exception as e:
                 err = f"{type(e).__name__}: {str(e)[:280]}"
                 yield (vp,
                        _error_panel("vanilla", "Gemma 4 E2B · base", err),
-                       _error_panel("final",      "MicroLens Final", err),
+                       _error_panel("brief",      "MicroLens · brief mode", err),
+                       _error_panel("rich",      "MicroLens · rich mode", err),
                        gr.Button(visible=False),
                        answers)
                 return
@@ -2093,24 +2136,31 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
                 return "".join(spans)
             footers = {
                 "vanilla": f"🛰 Live inference · <code>Gemma 4 E2B · base</code> · {source}",
-                "final":      f"🛰 Live inference · <code>MicroLens Final</code> · {source}",
+                "brief":      f"🛰 Live inference · <code>MicroLens · brief mode</code> · {source}",
+                "rich":      f"🛰 Live inference · <code>MicroLens · rich mode</code> · {source}",
             }
             yield (vp,
                    panel_html("vanilla", _animated_words(answers["vanilla"]),
                               state="ready", footer_text=footers["vanilla"]),
-                   panel_html("final",      _animated_words(answers["final"]),
-                              state="ready", footer_text=footers["final"]),
+                   panel_html("brief",      _animated_words(answers["brief"]),
+                              state="ready", footer_text=footers["brief"]),
+                   panel_html("rich",      _animated_words(answers["rich"]),
+                              state="ready", footer_text=footers["rich"]),
                    gr.Button(visible=False),
                    answers)
         else:
-            # Local: 3 HTTP calls to llama-servers, sequential typewriter per model
+            # Local: 3 HTTP calls to llama-servers, sequential typewriter per slot.
+            # brief and rich hit the SAME MicroLens Final backend (URL_BRIEF default =
+            # URL_RICH default), differentiated only by per-slot prompt.
             for kind, url, label in LIVE_BACKENDS:
-                ans, err = llama_server_call(url, img_uri)
+                slot_prompt = PROMPTS_BY_SLOT.get(kind, INFERENCE_PROMPT)
+                ans, err = llama_server_call(url, img_uri, prompt=slot_prompt)
                 if err:
                     results[kind] = _error_panel(kind, label, err)
                     yield (vp,
                            results.get("vanilla", panel_html("vanilla", running, state="typing")),
-                           results.get("final", panel_html("final", running, state="typing")),
+                           results.get("brief", panel_html("brief", running, state="typing")),
+                           results.get("rich", panel_html("rich", running, state="typing")),
                            gr.Button(visible=False),
                            answers)
                 else:
@@ -2127,7 +2177,8 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
                             footer_text=footer if is_done else None)
                         yield (vp,
                                results.get("vanilla", panel_html("vanilla", running, state="typing")),
-                               results.get("final", panel_html("final", running, state="typing")),
+                               results.get("brief", panel_html("brief", running, state="typing")),
+                               results.get("rich", panel_html("rich", running, state="typing")),
                                gr.Button(visible=False),
                                answers)
                         time.sleep(delay)
@@ -2156,7 +2207,7 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
     """
     analyze_btn.click(do_analyze,
         [picked_filename, shape_state, mode_state, grid_state, cross_state, viewport_uri],
-        [viewport, vanilla_panel, final_panel, original_btn, last_answers],
+        [viewport, vanilla_panel, brief_panel, rich_panel, original_btn, last_answers],
         js=ANALYZE_PRE_JS, api_name=False)
 
     def do_translate(filename, lang_label, answers):
@@ -2170,14 +2221,16 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
         if not sources:
             msg = "Run AI ANALYZE first to get an answer to translate."
             return (panel_html("vanilla", msg, state="ready"),
-                    panel_html("final",      msg, state="ready"),
+                    panel_html("brief",      msg, state="ready"),
+                    panel_html("rich",      msg, state="ready"),
                     gr.Button(visible=False))
 
         lang_code = LANG_BY_DISPLAY.get(lang_label, "en")
         lang_name = next((name for _, name, code in LANGUAGES if code == lang_code), "English")
         if lang_code == "en":
             return (panel_html("vanilla", sources.get("vanilla", "")),
-                    panel_html("final",      sources.get("final", "")),
+                    panel_html("brief",      sources.get("brief", "")),
+                    panel_html("rich",      sources.get("rich", "")),
                     gr.Button(visible=False))
         translated = {}
         engine = ""
@@ -2212,16 +2265,18 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
         if not translated or not any(translated.values()):
             placeholder = f"Translation to {lang_name} unavailable right now."
             return (panel_html("vanilla", placeholder, state="ready"),
-                    panel_html("final", placeholder, state="ready"),
+                    panel_html("brief", placeholder, state="ready"),
+                    panel_html("rich", placeholder, state="ready"),
                     gr.Button(visible=False))
         footer = f"🌍 {lang_name} · {engine}"
         return (panel_html("vanilla", translated.get("vanilla", ""), footer_text=footer),
-                panel_html("final",      translated.get("final", ""),      footer_text=footer),
+                panel_html("brief",      translated.get("brief", ""),      footer_text=footer),
+                panel_html("rich",      translated.get("rich", ""),      footer_text=footer),
                 gr.Button(visible=True))
 
     translate_btn.click(do_translate,
         [picked_filename, lang_dropdown, last_answers],
-        [vanilla_panel, final_panel, original_btn], api_name=False)
+        [vanilla_panel, brief_panel, rich_panel, original_btn], api_name=False)
 
     def restore_original(filename, answers):
         # Restore ONLY the live answer that produced this translation. Same
@@ -2234,13 +2289,14 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(primary_hue="red", neutral_hue="zin
                     gr.Button(visible=False),
                     gr.Dropdown(value=DEFAULT_LANG_DISPLAY))
         return (panel_html("vanilla", sources.get("vanilla", "")),
-                panel_html("final",      sources.get("final", "")),
+                panel_html("brief",      sources.get("brief", "")),
+                panel_html("rich",      sources.get("rich", "")),
                 gr.Button(visible=False),
                 gr.Dropdown(value=DEFAULT_LANG_DISPLAY))
 
     original_btn.click(restore_original,
         [picked_filename, last_answers],
-        [vanilla_panel, final_panel, original_btn, lang_dropdown],
+        [vanilla_panel, brief_panel, rich_panel, original_btn, lang_dropdown],
         api_name=False)
 
     demo.load(fn=None, inputs=None, outputs=None, js=CAMERA_JS)
