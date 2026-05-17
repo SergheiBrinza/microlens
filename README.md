@@ -127,7 +127,7 @@ The repository ships a [Modelfile](Modelfile) that pins the prompt template and 
 
 ## Watch the demo
 
-[![MicroLens demo on YouTube](https://img.youtube.com/vi/r1GIi4EukVg/maxresdefault.jpg)](https://youtu.be/r1GIi4EukVg)
+[![MicroLens demo on YouTube](https://img.youtube.com/vi/r1GIi4EukVg/hqdefault.jpg)](https://youtu.be/r1GIi4EukVg)
 
 90-second walkthrough of MicroLens identifying microscopy specimens on phone and browser.
 
